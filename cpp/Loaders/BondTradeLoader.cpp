@@ -6,7 +6,9 @@
 #include <iomanip>
 #include <chrono>
 
-BondTrade* BondTradeLoader::createTradeFromLine(std::string line) {
+// BondTrade* BondTradeLoader::createTradeFromLine(std::string line) {
+// pass by const reference instead of copying, for large objects so not really necessary but yeh
+BondTrade* BondTradeLoader::createTradeFromLine(const std::string& line) {
     std::vector<std::string> items;
     std::stringstream ss(line);
     std::string item;
@@ -15,11 +17,22 @@ BondTrade* BondTradeLoader::createTradeFromLine(std::string line) {
         items.push_back(item);
     }
     
+    // remove a \r at the end of the line if it's windows-style \r\n
+    if (!items.empty() &&
+        !items.back().empty() &&
+        items.back().back() == '\r') {
+        items.back().pop_back();
+    }
+    
     if (items.size() < 7) {
         throw std::runtime_error("Invalid line format");
     }
     
-    BondTrade* trade = new BondTrade(items[6]);
+//     BondTrade* trade = new BondTrade(items[6]);
+    // provide the trade type to the constructor expecting (id, type)
+    // could be unique pointer instead, to not end up with leaks, but requires changes across the project
+    // TO-DO: final one is Supra (not Gov or Corp) -- check what should happen with these
+    BondTrade* trade = new BondTrade(items[6], items[0]);
     
     std::tm tm = {};
     std::istringstream dateStream(items[1]);
