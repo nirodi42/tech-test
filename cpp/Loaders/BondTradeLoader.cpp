@@ -87,3 +87,30 @@ std::string BondTradeLoader::getDataFile() const {
 void BondTradeLoader::setDataFile(const std::string& file) {
     dataFile_ = file;
 }
+
+void BondTradeLoader::streamTrades(const std::function<void(ITrade*)>& processTrade) {
+
+    std::ifstream file(dataFile_);
+
+    if (!file.is_open()) {
+        throw std::runtime_error("Cannot open file: " + dataFile_);
+    }
+
+    std::string line;
+
+    // skip header
+    if (!std::getline(file, line)) {
+        return;
+    }
+
+    while (std::getline(file, line)) {
+
+        if (line.empty()) {
+            continue;
+        }
+
+        std::unique_ptr<BondTrade> trade(createTradeFromLine(line)); //trade by trade
+
+        processTrade(trade.get()); //non-owning
+    }
+}

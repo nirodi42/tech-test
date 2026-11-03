@@ -51,6 +51,24 @@ static std::chrono::system_clock::time_point parseDate(const std::string& value)
     return std::chrono::system_clock::from_time_t(time);
 }
 
+// separate it to use for streaming as well
+static std::unique_ptr<FxTrade> createFxTrade(
+    const std::vector<std::string>& items)
+{
+    auto trade = std::make_unique<FxTrade>(
+        items[8], items[0]
+    );
+
+    trade->setTradeDate(parseDate(items[1]));
+    trade->setInstrument(items[2] + items[3]);
+    trade->setNotional(std::stod(items[4]));
+    trade->setRate(std::stod(items[5]));
+    trade->setValueDate(parseDate(items[6]));
+    trade->setCounterparty(items[7]);
+
+    return trade;
+}
+
 std::vector<ITrade*> FxTradeLoader::loadTrades() {
 
     std::ifstream file(dataFile_);
@@ -93,15 +111,7 @@ std::vector<ITrade*> FxTradeLoader::loadTrades() {
             throw std::runtime_error("Invalid FX trade at line " + std::to_string(lineNumber));
         }
 
-        auto trade = std::make_unique<FxTrade>(items[8], items[0]);
-
-        // would prob check that all of these are the expected format
-        trade->setTradeDate(parseDate(items[1]));
-        trade->setInstrument(items[2] + items[3]);
-        trade->setNotional(std::stod(items[4]));
-        trade->setRate(std::stod(items[5]));
-        trade->setValueDate(parseDate(items[6]));
-        trade->setCounterparty(items[7]);
+        auto trade = createFxTrade(items);
 
         ownedTrades.push_back(std::move(trade));
     }
@@ -128,4 +138,47 @@ std::string FxTradeLoader::getDataFile() const {
 
 void FxTradeLoader::setDataFile(const std::string& file) {
     dataFile_ = file;
+}
+
+void FxTradeLoader::streamTrades(const std::function<void(ITrade*)>& processTrade) {
+    std::ifstream file(dataFile_);
+
+    if (!file.is_open()) {
+        throw std::runtime_error("Cannot open FX trade file: " + dataFile_);
+    }
+
+    std::string line;
+    std::size_t lineNumber = 0;
+
+    while (std::getline(file, line)) {
+        ++lineNumber;
+
+        if (lineNumber <= 2) {
+            continue;
+        }
+
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+
+        if (line.empty()) {
+            continue;
+        }
+
+        auto items = splitLine(line);
+
+        if (items[0] == "END") {
+            break;
+        }
+
+        if (items.size() != 9) {
+            throw std::runtime_error("Invalid FX trade at line " + std::to_string(lineNumber));
+        }
+
+        // create and own one trade
+        auto trade = createFxTrade(items);
+
+        processTrade(trade.get());
+
+    }
 }
