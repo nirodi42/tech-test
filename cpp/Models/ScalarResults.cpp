@@ -37,21 +37,84 @@ void ScalarResults::addError(const std::string& tradeId, const std::string& erro
 }
 
 ScalarResults::Iterator& ScalarResults::Iterator::operator++() {
-    throw std::runtime_error("Iterator not implemented");
+
+    if (parent_ == nullptr) {
+        throw std::runtime_error("Invalid iterator");
+    }
+
+    const auto resultEnd = parent_->results_.cend();
+    const auto errorEnd = parent_->errors_.cend();
+
+    if (resultIt_ == resultEnd && errorIt_ == errorEnd) {
+        throw std::out_of_range("Cannot increment end iterator");
+    }
+
+    if (resultIt_ == resultEnd) {
+        ++errorIt_;
+    }
+    else if (errorIt_ == errorEnd) {
+        ++resultIt_;
+    }
+    else if (resultIt_->first < errorIt_->first) {
+        ++resultIt_;
+    }
+    else if (errorIt_->first < resultIt_->first) {
+        ++errorIt_;
+    }
+    else {
+        ++resultIt_;
+        ++errorIt_;
+    }
+
+    return *this;
 }
 
 ScalarResult ScalarResults::Iterator::operator*() const {
-    throw std::runtime_error("Iterator not implemented");
+
+    if (parent_ == nullptr) {
+        throw std::runtime_error("Invalid iterator");
+    }
+
+    const auto resultEnd = parent_->results_.cend();
+    const auto errorEnd = parent_->errors_.cend();
+
+    if (resultIt_ == resultEnd && errorIt_ == errorEnd) {
+        throw std::out_of_range("Cannot dereference end iterator");
+    }
+
+    std::string tradeId;
+
+    if (resultIt_ == resultEnd) {
+        tradeId = errorIt_->first;
+    }
+    else if (errorIt_ == errorEnd) {
+        tradeId = resultIt_->first;
+    }
+    else {
+        tradeId = std::min(resultIt_->first, errorIt_->first);
+    }
+
+    return parent_->operator[](tradeId).value();
 }
 
 bool ScalarResults::Iterator::operator!=(const Iterator& other) const {
-    throw std::runtime_error("Iterator not implemented");
+    return parent_ != other.parent_ || resultIt_ != other.resultIt_ || errorIt_ != other.errorIt_;
 }
 
 ScalarResults::Iterator ScalarResults::begin() const {
-    throw std::runtime_error("Not implemented");
+    return Iterator(this, false);
 }
 
 ScalarResults::Iterator ScalarResults::end() const {
-    throw std::runtime_error("Not implemented");
+    return Iterator(this, true);
+}
+
+ScalarResults::Iterator::Iterator(const ScalarResults* parent, bool atEnd) : parent_(parent) {
+    if (atEnd) {
+        resultIt_ = parent_->results_.cend();
+        errorIt_ = parent_->errors_.cend();
+    } else {
+        resultIt_ = parent_->results_.cbegin();
+        errorIt_ = parent_->errors_.cbegin();
+    }
 }

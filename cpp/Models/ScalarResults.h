@@ -25,17 +25,27 @@ public:
         using iterator_category = std::forward_iterator_tag;
         using value_type = ScalarResult;
         using difference_type = std::ptrdiff_t;
-        using pointer = ScalarResult*;
-        using reference = ScalarResult&;
+        // operator*() returns a ScalarResult by value not a reference
+//         using pointer = ScalarResult*;
+        using pointer = void;
+//         using reference = ScalarResult&;
+        using reference = ScalarResult;
 
         Iterator() = default;
+        Iterator(const ScalarResults* parent, bool atEnd);
 
         // Iterator must be constructable from ScalarResults parent
         Iterator& operator++();
         ScalarResult operator*() const;
         bool operator!=(const Iterator& other) const;
+        
+    private:
+        const ScalarResults* parent_ = nullptr;
+    
+        std::map<std::string, double>::const_iterator resultIt_;
+        std::map<std::string, std::string>::const_iterator errorIt_;
     };
-
+    
     Iterator begin() const;
     Iterator end() const;
 
