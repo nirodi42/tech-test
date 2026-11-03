@@ -1,17 +1,54 @@
 #include "SerialPricer.h"
 #include <stdexcept>
 
-SerialPricer::~SerialPricer() {
+#include "../Pricers/GovBondPricingEngine.h"
+#include "../Pricers/CorpBondPricingEngine.h"
+#include "../Pricers/FxPricingEngine.h"
 
+// was empty so engines don't get deleted; use unique_ptr instead
+SerialPricer::~SerialPricer() {
+    for (auto& entry : pricers_) {
+        delete entry.second;
+    }
 }
 
 void SerialPricer::loadPricers() {
+
+    // avoid creating the same engines and overwriting pointers if multiple price()
+    // but if throw (for supra), it won't start over.. better to store temp until compl, then transfer to procers_
+    if (!pricers_.empty()) {
+        return;
+    }
+
     PricingConfigLoader pricingConfigLoader;
     pricingConfigLoader.setConfigFile("./PricingConfig/PricingEngines.xml");
     PricingEngineConfig pricerConfig = pricingConfigLoader.loadConfig();
-    
+
     for (const auto& configItem : pricerConfig) {
-        throw std::runtime_error("Not implemented");
+
+        const std::string& typeName = configItem.getTypeName();
+        const std::string& tradeType = configItem.getTradeType();
+
+        // to interface, to use ->price() on all of them
+        IPricingEngine* engine = nullptr;
+
+        // can't make class from string..
+        if (typeName == "HmxLabs.TechTest.Pricers.GovBondPricingEngine") {
+            engine = new GovBondPricingEngine();
+
+        } else if (typeName == "HmxLabs.TechTest.Pricers.CorpBondPricingEngine") {
+            engine = new CorpBondPricingEngine();
+
+        } else if (typeName == "HmxLabs.TechTest.Pricers.FxPricingEngine") {
+            // two of these will be created, could maybe share
+            engine = new FxPricingEngine();
+
+        } else {
+            throw std::runtime_error("Unknown pricing engine: " + typeName);
+        }
+
+        // add checks in case doubly-defined in xml etc
+        pricers_[tradeType] = engine;
     }
 }
 
