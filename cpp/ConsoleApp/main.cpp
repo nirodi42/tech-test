@@ -29,10 +29,19 @@ int _getch() {
 
 int main(int argc, char* argv[]) {
     
-    ScalarResults results;
+//     ScalarResults results;
+// 
+//     StreamingTradeLoader tradeLoader;
+//     tradeLoader.loadAndPrice(&results);
 
-    StreamingTradeLoader tradeLoader;
-    tradeLoader.loadAndPrice(&results);
+    SerialTradeLoader tradeLoader;
+    auto allTrades = tradeLoader.loadTrades();
+    
+    ScalarResults results;
+    
+    ParallelPricer pricer;
+    pricer.price(allTrades, &results);
+    
     
     ScreenResultPrinter screenPrinter;
     screenPrinter.printResults(results);

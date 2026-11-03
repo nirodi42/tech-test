@@ -22,8 +22,10 @@ private:
 public:
     ~ParallelPricer();
     
-    void price(const std::vector<std::vector<ITrade*>>& tradeContainers, 
-               IScalarResultReceiver* resultReceiver);
+    void price(const std::vector<std::vector<ITrade*>>& tradeContainers, IScalarResultReceiver* resultReceiver);
+    ParallelPricer(const ParallelPricer&) = delete;
+    ParallelPricer& operator=(const ParallelPricer&) = delete;
+    ParallelPricer() = default;
 };
 
 #endif // PARALLELPRICER_H
